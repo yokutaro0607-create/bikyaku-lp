@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>歩き方診断 提出フォーム</title>
+<style>
+  :root {
+    --accent: #e05a7a;
+    --accent-dark: #c94868;
+    --blue: #3598db;
+    --red: #e03e2d;
+    --bg: #fdf6f7;
+    --card: #ffffff;
+    --text: #333333;
+    --border: #e8d5da;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 0 60px;
+    background: var(--bg); color: var(--text);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    font-size: 17px; line-height: 1.7;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 16px; }
+  h1 {
+    color: var(--blue); font-size: 24px; line-height: 1.4;
+    margin: 18px 0 10px; text-align: center;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 16px; margin-bottom: 16px;
+  }
+  .notice strong { color: var(--red); }
+  .notice a {
+    display: inline-block; margin: 8px 0; padding: 10px 18px;
+    background: var(--blue); color: #fff; text-decoration: none;
+    border-radius: 8px; font-weight: bold;
+  }
+  label.q {
+    display: block; font-weight: bold; margin: 4px 0 8px;
+    white-space: pre-line;
+  }
+  .req {
+    display: inline-block; background: var(--red); color: #fff;
+    font-size: 14px; border-radius: 4px; padding: 0 6px; margin-left: 6px;
+    vertical-align: middle;
+  }
+  input[type="text"], input[type="email"], textarea {
+    width: 100%; font-size: 17px; padding: 10px;
+    border: 1px solid #ccc; border-radius: 8px; background: #fff;
+  }
+  textarea { min-height: 110px; resize: vertical; }
+  .filebox { margin-top: 6px; }
+  .filebox input[type="file"] { font-size: 15px; max-width: 100%; }
+  .hint { font-size: 14px; color: #777; margin-top: 4px; }
+  .progress-outer {
+    height: 14px; background: #f0e2e6; border-radius: 7px;
+    overflow: hidden; margin-top: 8px; display: none;
+  }
+  .progress-inner {
+    height: 100%; width: 0%; background: var(--accent);
+    transition: width .2s;
+  }
+  .progress-label { font-size: 14px; color: #777; margin-top: 2px; }
+  #submitBtn {
+    display: block; width: 100%; padding: 16px; margin-top: 8px;
+    font-size: 19px; font-weight: bold; color: #fff;
+    background: var(--accent); border: none; border-radius: 12px;
+    cursor: pointer;
+  }
+  #submitBtn:disabled { background: #d9a8b5; cursor: default; }
+  #status {
+    margin-top: 12px; font-size: 16px; text-align: center;
+    white-space: pre-line;
+  }
+  #status.error { color: var(--red); font-weight: bold; }
+  #doneCard { display: none; text-align: center; }
+  #doneCard h2 { color: var(--accent-dark); }
+  .err-field { border-color: var(--red) !important; background: #fff3f2 !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1 id="formTitle">歩き方診断申込フォーム</h1>
+
+  <div class="card notice">
+    <p><strong>＜ご注意点＞</strong><br>
+    正しい診断を行うため、撮影方法に則り撮影された動画やお写真をお送りいただいた方のみ診断させていただきます。<br>
+    <strong>必ず以下の撮影方法をご覧の上、ご提出ください。</strong></p>
+    <p style="text-align:center"><a id="guideLink" href="#" target="_blank" rel="noopener">▶ 撮影方法を見る ◀</a></p>
+    <p>・回答締め切り <strong id="deadlineText"></strong><br>
+    ・診断結果は <strong id="resultText"></strong> にお送りします。</p>
+    <p><strong style="color:var(--red)">＜動画がうまく送れない場合＞</strong><br>
+    <span id="troubleText"></span></p>
+  </div>
+
+  <form id="mainForm" onsubmit="return false;">
+
+    <div class="card">
+      <label class="q" for="f_name">お名前を入力してください<span class="req">必須</span></label>
+      <input type="text" id="f_name" autocomplete="name">
+    </div>
+
+    <div class="card">
+      <label class="q" for="f_email">メールアドレスを入力してください<span class="req">必須</span></label>
+      <input type="email" id="f_email" autocomplete="email" inputmode="email">
+    </div>
+
+    <div class="card">
+      <label class="q">カメラ位置【横】<span class="req">必須</span>
+・横からのカメラに対して5歩程度歩き、3往復する</label>
+      <div class="filebox">
+        <input type="file" id="f_side" accept="video/*">
+        <div class="hint">スマホで撮影した動画をそのまま選択できます</div>
+        <div class="progress-outer" id="p_side"><div class="progress-inner"></div></div>
+        <div class="progress-label" id="pl_side"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="q">カメラ位置【正面】<span class="req">必須</span>
+・カメラに向かって歩く→振り返りカメラを背にして歩く
+・5歩程度を3往復する</label>
+      <div class="filebox">
+        <input type="file" id="f_front" accept="video/*">
+        <div class="progress-outer" id="p_front"><div class="progress-inner"></div></div>
+        <div class="progress-label" id="pl_front"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="q">靴の裏の写真を添付ください<span class="req">必須</span>
+※撮影方法の詳細は「撮影方法を見る」からご確認ください</label>
+      <div class="filebox">
+        <input type="file" id="f_shoe" accept="image/*">
+        <div class="progress-outer" id="p_shoe"><div class="progress-inner"></div></div>
+        <div class="progress-label" id="pl_shoe"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="q" for="f_q1">①お悩み（不調面）をご記入ください<span class="req">必須</span></label>
+      <textarea id="f_q1"></textarea>
+    </div>
+
+    <div class="card">
+      <label class="q" for="f_q2">②お悩み（見た目面）をご記入ください<span class="req">必須</span></label>
+      <textarea id="f_q2"></textarea>
+    </div>
+
+    <div class="card">
+      <label class="q" for="f_q3">③お悩み（歩き方）をご記入ください<span class="req">必須</span></label>
+      <textarea id="f_q3"></textarea>
+    </div>
+
+    <div class="card">
+      <label class="q" for="f_q4">④「どんな風に変わりたいか」をご記入ください<span class="req">必須</span></label>
+      <textarea id="f_q4"></textarea>
+    </div>
+
+    <button id="submitBtn">提出する</button>
+    <div id="status"></div>
+  </form>
+
+  <div class="card" id="doneCard">
+    <h2>ご提出ありがとうございました！</h2>
+    <p>動画・写真・ご回答を受け付けました。<br>
+    診断結果は <strong id="resultText2"></strong> にお送りしますので、楽しみにお待ちください。</p>
+  </div>
+
+</div>
+
+<script>
+// ================= 設定（ここだけ書き換える） =================
+
+var CONFIG = {
+  // GASウェブアプリのURL（デプロイ後に貼り替える。末尾が /exec のもの）
+  GAS_URL: 'https://script.google.com/macros/s/ここを書き換える/exec',
+
+  // GAS側 Code.gs の FORM_KEY と同じ文字列
+  FORM_KEY: 'aruki-2026',
+
+  // 撮影方法ページのURL（自前版。同じフォルダに置いた 撮影方法.html を開く）
+  GUIDE_URL: '撮影方法.html',
+
+  // ▼ 開催回ごとに書き換える文言（日付をコードに埋め込まないための設定）
+  DEADLINE_TEXT: '【○月○日23:59迄】',
+  RESULT_TEXT: '【○月中】にLINE',
+  TROUBLE_TEXT: '容量オーバーや、ファイル形式が異なる等で、動画がうまく送れない場合は、【必ず】公式LINEに動画が送れなかった旨ご連絡いただき、フォームからではなく、LINEに直接動画をお送りください。'
+};
+
+// ==============================================================
+
+var CHUNK = 8 * 1024 * 1024; // 8MB（256KBの倍数であること）
+
+document.getElementById('guideLink').href = CONFIG.GUIDE_URL;
+document.getElementById('deadlineText').textContent = CONFIG.DEADLINE_TEXT;
+document.getElementById('resultText').textContent = CONFIG.RESULT_TEXT;
+document.getElementById('resultText2').textContent = CONFIG.RESULT_TEXT;
+document.getElementById('troubleText').textContent = CONFIG.TROUBLE_TEXT;
+
+function $(id) { return document.getElementById(id); }
+
+function setStatus(msg, isError) {
+  var el = $('status');
+  el.textContent = msg;
+  el.className = isError ? 'error' : '';
+}
+
+// GASのAPI呼び出し（text/plainで送るとプリフライト無しで届く）
+function api(payload) {
+  payload.key = CONFIG.FORM_KEY;
+  return fetch(CONFIG.GAS_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }).then(function (r) { return r.json(); }).then(function (j) {
+    if (!j.ok) throw new Error(j.error || 'サーバーエラー');
+    return j;
+  });
+}
+
+// 1チャンクをアップロード（308=続きあり、200/201=完了）
+function putChunk(uploadUrl, blob, start, total, onProgress) {
+  return new Promise(function (resolve, reject) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl, true);
+    var end = start + blob.size - 1;
+    xhr.setRequestHeader('Content-Range', 'bytes ' + start + '-' + end + '/' + total);
+    xhr.upload.onprogress = function (ev) {
+      if (ev.lengthComputable) onProgress(start + ev.loaded);
+    };
+    xhr.onload = function () {
+      if (xhr.status === 308 || xhr.status === 200 || xhr.status === 201) resolve(xhr.status);
+      else reject(new Error('アップロード失敗 (HTTP ' + xhr.status + ')'));
+    };
+    xhr.onerror = function () { reject(new Error('通信エラー')); };
+    xhr.send(blob);
+  });
+}
+
+// ファイル全体を分割アップロード（チャンクごとに3回まで再試行）
+async function uploadFile(folderId, file, saveName, barId, labelId) {
+  var res = await api({
+    action: 'initUpload',
+    folderId: folderId,
+    fileName: saveName,
+    mimeType: file.type || 'application/octet-stream'
+  });
+  var url = res.uploadUrl;
+
+  var bar = $(barId); bar.style.display = 'block';
+  var inner = bar.querySelector('.progress-inner');
+  var label = $(labelId);
+
+  function show(sent) {
+    var pct = Math.min(100, Math.round(sent / file.size * 100));
+    inner.style.width = pct + '%';
+    label.textContent = 'アップロード中… ' + pct + '%';
+  }
+
+  var pos = 0;
+  while (pos < file.size) {
+    var blob = file.slice(pos, Math.min(pos + CHUNK, file.size));
+    var tries = 0;
+    for (;;) {
+      try {
+        await putChunk(url, blob, pos, file.size, show);
+        break;
+      } catch (e) {
+        tries++;
+        if (tries >= 3) throw e;
+        await new Promise(function (r) { setTimeout(r, 2000 * tries); });
+      }
+    }
+    pos += blob.size;
+  }
+  inner.style.width = '100%';
+  label.textContent = 'アップロード完了 ✓';
+}
+
+function ext(file, fallback) {
+  var m = /\.([A-Za-z0-9]+)$/.exec(file.name || '');
+  return m ? m[1].toLowerCase() : fallback;
+}
+
+function collectAndValidate() {
+  var fields = [
+    { id: 'f_name', label: 'お名前' },
+    { id: 'f_email', label: 'メールアドレス' },
+    { id: 'f_side', label: '横からの動画', file: true },
+    { id: 'f_front', label: '正面からの動画', file: true },
+    { id: 'f_shoe', label: '靴の裏の写真', file: true },
+    { id: 'f_q1', label: '①お悩み（不調面）' },
+    { id: 'f_q2', label: '②お悩み（見た目面）' },
+    { id: 'f_q3', label: '③お悩み（歩き方）' },
+    { id: 'f_q4', label: '④変わりたい姿' }
+  ];
+  var missing = [];
+  fields.forEach(function (f) {
+    var el = $(f.id);
+    var empty = f.file ? !el.files.length : !el.value.trim();
+    el.classList.toggle('err-field', empty);
+    if (empty) missing.push(f.label);
+  });
+  if (missing.length) {
+    setStatus('未入力の項目があります：\n' + missing.join(' / '), true);
+    return null;
+  }
+  var email = $('f_email').value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    $('f_email').classList.add('err-field');
+    setStatus('メールアドレスの形式が正しくありません', true);
+    return null;
+  }
+  return {
+    name: $('f_name').value.trim(),
+    email: email,
+    q1: $('f_q1').value.trim(),
+    q2: $('f_q2').value.trim(),
+    q3: $('f_q3').value.trim(),
+    q4: $('f_q4').value.trim(),
+    side: $('f_side').files[0],
+    front: $('f_front').files[0],
+    shoe: $('f_shoe').files[0]
+  };
+}
+
+$('submitBtn').addEventListener('click', async function () {
+  var d = collectAndValidate();
+  if (!d) return;
+
+  var btn = $('submitBtn');
+  btn.disabled = true;
+  setStatus('送信を開始しています…\n※完了するまでこの画面を閉じないでください');
+
+  try {
+    var s = await api({ action: 'start', name: d.name, email: d.email });
+    var folderId = s.folderId;
+
+    setStatus('横からの動画をアップロード中…\n※完了するまでこの画面を閉じないでください');
+    await uploadFile(folderId, d.side, '01_横動画.' + ext(d.side, 'mp4'), 'p_side', 'pl_side');
+
+    setStatus('正面からの動画をアップロード中…\n※完了するまでこの画面を閉じないでください');
+    await uploadFile(folderId, d.front, '02_正面動画.' + ext(d.front, 'mp4'), 'p_front', 'pl_front');
+
+    setStatus('靴の裏の写真をアップロード中…');
+    await uploadFile(folderId, d.shoe, '03_靴裏.' + ext(d.shoe, 'jpg'), 'p_shoe', 'pl_shoe');
+
+    setStatus('回答を保存しています…');
+    await api({
+      action: 'finalize',
+      folderId: folderId,
+      answers: { name: d.name, email: d.email, q1: d.q1, q2: d.q2, q3: d.q3, q4: d.q4 }
+    });
+
+    $('mainForm').style.display = 'none';
+    $('doneCard').style.display = 'block';
+    setStatus('');
+    window.scrollTo(0, 0);
+  } catch (e) {
+    btn.disabled = false;
+    setStatus('送信に失敗しました：' + e.message +
+      '\n電波の良い場所でもう一度お試しください。\n何度も失敗する場合は公式LINEにご連絡ください。', true);
+  }
+});
+</script>
+</body>
+</html>

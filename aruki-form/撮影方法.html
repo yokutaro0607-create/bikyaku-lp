@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>歩き方診断 撮影方法</title>
+<style>
+  :root {
+    --accent: #e05a7a;
+    --blue: #3598db;
+    --red: #e03e2d;
+    --bg: #fdf6f7;
+    --border: #e8d5da;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 0 60px;
+    background: var(--bg); color: #333;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    font-size: 17px; line-height: 1.8;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 16px; }
+  h1 { color: var(--blue); font-size: 24px; line-height: 1.4; margin: 18px 0 10px; text-align: center; }
+  h2 { color: var(--red); font-size: 20px; margin: 0 0 10px; }
+  .card {
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 16px; margin-bottom: 16px;
+  }
+  video, img.sample { width: 100%; border-radius: 8px; display: block; }
+  img.sample { max-width: 420px; margin: 10px auto 0; }
+  .caption { font-weight: bold; margin-top: 14px; }
+  .backlink {
+    display: block; text-align: center; margin-top: 20px;
+    padding: 14px; background: var(--accent); color: #fff;
+    border-radius: 12px; text-decoration: none; font-weight: bold; font-size: 18px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>歩き方診断撮影方法</h1>
+
+  <div class="card">
+    <h2>＜重要事項＞</h2>
+    <p>動画撮影の際は<strong>「カメラは固定して」</strong>撮影して下さい。<br>
+    被写体と一緒にカメラを動かすと、カメラの動きかお体の動きかわからなくなるためです。</p>
+    <video src="撮影方法動画.mp4" controls playsinline preload="metadata"></video>
+  </div>
+
+  <div class="card">
+    <p class="caption">靴の裏の写真はこのような写真を添付してください</p>
+    <p><strong>足裏重心（靴底）</strong><br>
+    普段履いている靴（スニーカーでもパンプスでも種類は問いません。）<br>
+    歩く習慣があまりない方は、その中でもよく履く靴を撮影して下さい。</p>
+    <img class="sample" src="img_靴裏見本.png" alt="靴の裏の見本写真">
+  </div>
+
+  <a class="backlink" href="index.html">提出フォームに戻る</a>
+
+</div>
+</body>
+</html>
