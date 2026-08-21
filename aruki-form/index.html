@@ -109,6 +109,13 @@
       <input type="email" id="f_email" autocomplete="email" inputmode="email">
     </div>
 
+    <!-- LINEのuidがURLに無い場合のみ表示（診断結果をLINEでお届けする際の照合用） -->
+    <div class="card" id="lineNameCard" style="display:none">
+      <label class="q" for="f_linename">LINEのお名前（表示名）を入力してください<span class="req">必須</span>
+※診断結果をLINEでお送りする際、お間違いなくお届けするために使用します</label>
+      <input type="text" id="f_linename">
+    </div>
+
     <div class="card">
       <label class="q">カメラ位置【横】<span class="req">必須</span>
 ・横からのカメラに対して5歩程度歩き、3往復する</label>
@@ -195,6 +202,11 @@ var CONFIG = {
 // ==============================================================
 
 var CHUNK = 8 * 1024 * 1024; // 8MB（256KBの倍数であること）
+
+// LINE連携ツールが配信URLに付けるユーザーID（例：?uid=Uxxxx）。
+// 無い場合は照合用にLINE表示名を入力してもらう。
+var LINE_UID = (new URLSearchParams(location.search).get('uid') || '').trim();
+if (!LINE_UID) document.getElementById('lineNameCard').style.display = 'block';
 
 document.getElementById('guideLink').href = CONFIG.GUIDE_URL;
 document.getElementById('deadlineText').textContent = CONFIG.DEADLINE_TEXT;
@@ -290,6 +302,7 @@ function collectAndValidate() {
   var fields = [
     { id: 'f_name', label: 'お名前' },
     { id: 'f_email', label: 'メールアドレス' },
+    { id: 'f_linename', label: 'LINEのお名前', skip: !!LINE_UID },
     { id: 'f_side', label: '横からの動画', file: true },
     { id: 'f_front', label: '正面からの動画', file: true },
     { id: 'f_shoe', label: '靴の裏の写真', file: true },
@@ -300,6 +313,7 @@ function collectAndValidate() {
   ];
   var missing = [];
   fields.forEach(function (f) {
+    if (f.skip) return;
     var el = $(f.id);
     var empty = f.file ? !el.files.length : !el.value.trim();
     el.classList.toggle('err-field', empty);
@@ -318,6 +332,8 @@ function collectAndValidate() {
   return {
     name: $('f_name').value.trim(),
     email: email,
+    uid: LINE_UID,
+    lineName: LINE_UID ? '' : $('f_linename').value.trim(),
     q1: $('f_q1').value.trim(),
     q2: $('f_q2').value.trim(),
     q3: $('f_q3').value.trim(),
@@ -353,7 +369,8 @@ $('submitBtn').addEventListener('click', async function () {
     await api({
       action: 'finalize',
       folderId: folderId,
-      answers: { name: d.name, email: d.email, q1: d.q1, q2: d.q2, q3: d.q3, q4: d.q4 }
+      answers: { name: d.name, email: d.email, uid: d.uid, lineName: d.lineName,
+                 q1: d.q1, q2: d.q2, q3: d.q3, q4: d.q4 }
     });
 
     $('mainForm').style.display = 'none';
