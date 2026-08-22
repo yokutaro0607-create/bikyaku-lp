@@ -253,7 +253,8 @@ async function uploadFile(folderId, file, saveName, barId, labelId) {
     action: 'initUpload',
     folderId: folderId,
     fileName: saveName,
-    mimeType: file.type || 'application/octet-stream'
+    mimeType: file.type || 'application/octet-stream',
+    origin: location.origin  // 動画アップロードのCORS許可用（GAS側の許可リストと照合）
   });
   var url = res.uploadUrl;
 

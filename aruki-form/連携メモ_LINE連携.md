@@ -6,8 +6,11 @@ LINE送信そのものは別システム側の実装。本フォーム側は「�
 
 ## 1. 紐付けの仕組み（uid）
 
+- フォームの公開URL（特典サイトと同じ仕組み・こちらを配布する）:
+  **https://bikyaku-selfdesign.web.app/aruki-form/**
+  （GitHub Pages版 https://yokutaro0607-create.github.io/bikyaku-lp/aruki-form/ も併存。どちらからでも動作）
 - LINEツールからフォームURLを配信する際、**受信者ごとに `?uid=<LINEのuserId>` を付けて配る**。
-  例: `https://<配信URL>/aruki-form/?uid=U1234567890abcdef...`
+  例: `https://bikyaku-selfdesign.web.app/aruki-form/?uid=U1234567890abcdef...`
 - フォームはこの `uid` を自動で読み取り、提出データと一緒にGASへ送る（受講者は何も入力しない）。
 - `uid` 無しでフォームが開かれた場合のみ、「LINEのお名前（表示名）」欄が表示され必須になる
   （手動照合のフォールバック）。
