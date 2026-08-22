@@ -91,8 +91,6 @@
     正しい診断を行うため、撮影方法に則り撮影された動画やお写真をお送りいただいた方のみ診断させていただきます。<br>
     <strong>必ず以下の撮影方法をご覧の上、ご提出ください。</strong></p>
     <p style="text-align:center"><a id="guideLink" href="#" target="_blank" rel="noopener">▶ 撮影方法を見る ◀</a></p>
-    <p>・回答締め切り <strong id="deadlineText"></strong><br>
-    ・診断結果は <strong id="resultText"></strong> にお送りします。</p>
     <p><strong style="color:var(--red)">＜動画がうまく送れない場合＞</strong><br>
     <span id="troubleText"></span></p>
   </div>
@@ -107,6 +105,13 @@
     <div class="card">
       <label class="q" for="f_email">メールアドレスを入力してください<span class="req">必須</span></label>
       <input type="email" id="f_email" autocomplete="email" inputmode="email">
+    </div>
+
+    <!-- LINEのuidがURLに無い場合のみ表示（診断結果をLINEでお届けする際の照合用） -->
+    <div class="card" id="lineNameCard" style="display:none">
+      <label class="q" for="f_linename">LINEのお名前（表示名）を入力してください<span class="req">必須</span>
+※診断結果をLINEでお送りする際、お間違いなくお届けするために使用します。LINEのお名前と違っていると、結果が届かないこともありますのでご注意ください。</label>
+      <input type="text" id="f_linename">
     </div>
 
     <div class="card">
@@ -168,7 +173,8 @@
   <div class="card" id="doneCard">
     <h2>ご提出ありがとうございました！</h2>
     <p>動画・写真・ご回答を受け付けました。<br>
-    診断結果は <strong id="resultText2"></strong> にお送りしますので、楽しみにお待ちください。</p>
+    診断結果のお届けまで、約1か月程度お時間をいただきます。<br>
+    楽しみにお待ちください。</p>
   </div>
 
 </div>
@@ -186,9 +192,7 @@ var CONFIG = {
   // 撮影方法ページのURL（自前版。同じフォルダに置いた 撮影方法.html を開く）
   GUIDE_URL: '撮影方法.html',
 
-  // ▼ 開催回ごとに書き換える文言（日付をコードに埋め込まないための設定）
-  DEADLINE_TEXT: '【○月○日23:59迄】',
-  RESULT_TEXT: '【○月中】にLINE',
+  // ▼ 開催回ごとに書き換える文言（締め切り・結果時期はフォームに書かず別途アナウンスする）
   TROUBLE_TEXT: '容量オーバーや、ファイル形式が異なる等で、動画がうまく送れない場合は、【必ず】公式LINEに動画が送れなかった旨ご連絡いただき、フォームからではなく、LINEに直接動画をお送りください。'
 };
 
@@ -196,10 +200,12 @@ var CONFIG = {
 
 var CHUNK = 8 * 1024 * 1024; // 8MB（256KBの倍数であること）
 
+// LINE連携ツールが配信URLに付けるユーザーID（例：?uid=Uxxxx）。
+// 無い場合は照合用にLINE表示名を入力してもらう。
+var LINE_UID = (new URLSearchParams(location.search).get('uid') || '').trim();
+if (!LINE_UID) document.getElementById('lineNameCard').style.display = 'block';
+
 document.getElementById('guideLink').href = CONFIG.GUIDE_URL;
-document.getElementById('deadlineText').textContent = CONFIG.DEADLINE_TEXT;
-document.getElementById('resultText').textContent = CONFIG.RESULT_TEXT;
-document.getElementById('resultText2').textContent = CONFIG.RESULT_TEXT;
 document.getElementById('troubleText').textContent = CONFIG.TROUBLE_TEXT;
 
 function $(id) { return document.getElementById(id); }
@@ -247,7 +253,8 @@ async function uploadFile(folderId, file, saveName, barId, labelId) {
     action: 'initUpload',
     folderId: folderId,
     fileName: saveName,
-    mimeType: file.type || 'application/octet-stream'
+    mimeType: file.type || 'application/octet-stream',
+    origin: location.origin  // 動画アップロードのCORS許可用（GAS側の許可リストと照合）
   });
   var url = res.uploadUrl;
 
@@ -290,6 +297,7 @@ function collectAndValidate() {
   var fields = [
     { id: 'f_name', label: 'お名前' },
     { id: 'f_email', label: 'メールアドレス' },
+    { id: 'f_linename', label: 'LINEのお名前', skip: !!LINE_UID },
     { id: 'f_side', label: '横からの動画', file: true },
     { id: 'f_front', label: '正面からの動画', file: true },
     { id: 'f_shoe', label: '靴の裏の写真', file: true },
@@ -300,6 +308,7 @@ function collectAndValidate() {
   ];
   var missing = [];
   fields.forEach(function (f) {
+    if (f.skip) return;
     var el = $(f.id);
     var empty = f.file ? !el.files.length : !el.value.trim();
     el.classList.toggle('err-field', empty);
@@ -318,6 +327,8 @@ function collectAndValidate() {
   return {
     name: $('f_name').value.trim(),
     email: email,
+    uid: LINE_UID,
+    lineName: LINE_UID ? '' : $('f_linename').value.trim(),
     q1: $('f_q1').value.trim(),
     q2: $('f_q2').value.trim(),
     q3: $('f_q3').value.trim(),
@@ -353,7 +364,8 @@ $('submitBtn').addEventListener('click', async function () {
     await api({
       action: 'finalize',
       folderId: folderId,
-      answers: { name: d.name, email: d.email, q1: d.q1, q2: d.q2, q3: d.q3, q4: d.q4 }
+      answers: { name: d.name, email: d.email, uid: d.uid, lineName: d.lineName,
+                 q1: d.q1, q2: d.q2, q3: d.q3, q4: d.q4 }
     });
 
     $('mainForm').style.display = 'none';
