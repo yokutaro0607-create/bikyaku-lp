@@ -170,7 +170,8 @@
   <div class="card" id="doneCard">
     <h2>ご提出ありがとうございました！</h2>
     <p>お写真6枚とご回答を受け付けました。<br>
-    <span id="doneResultLine">診断結果は <strong id="resultText2"></strong> にお届けしますので、</span>楽しみにお待ちください。</p>
+    <span id="doneResultLine"></span><br>
+    楽しみにお待ちください。</p>
   </div>
 
 </div>
@@ -189,7 +190,10 @@ var CONFIG = {
   //   （締切や結果時期はLINE配信側で案内する運用なら空のままでよい）
   DEADLINE_TEXT: '',
   RESULT_TEXT: '',
-  TROUBLE_TEXT: 'フォームからうまく回答ができない場合は、LINEよりお問合せください。'
+  TROUBLE_TEXT: 'フォームからうまく回答ができない場合は、LINEよりお問合せください。',
+
+  // 提出完了画面に出す一言
+  DONE_TEXT: '診断結果のお届けまで、約1か月程度お時間をいただきます。'
 };
 
 // ==============================================================
@@ -204,11 +208,10 @@ if (CONFIG.DEADLINE_TEXT) {
 }
 if (CONFIG.RESULT_TEXT) {
   document.getElementById('resultText').textContent = CONFIG.RESULT_TEXT;
-  document.getElementById('resultText2').textContent = CONFIG.RESULT_TEXT;
 } else {
   document.getElementById('resultLine').style.display = 'none';
-  document.getElementById('doneResultLine').textContent = '診断結果をお届けしますので、';
 }
+document.getElementById('doneResultLine').textContent = CONFIG.DONE_TEXT;
 document.getElementById('troubleText').textContent = CONFIG.TROUBLE_TEXT;
 
 function $(id) { return document.getElementById(id); }
