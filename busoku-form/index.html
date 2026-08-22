@@ -93,8 +93,13 @@
     <div class="card">
       <label class="q" for="f_name">お名前を入力してください<span class="req">必須</span></label>
       <input type="text" id="f_name" autocomplete="name">
+    </div>
+
+    <div class="card">
+      <label class="q" for="f_line">LINEのお名前を入力してください<span class="req">必須</span></label>
+      <input type="text" id="f_line">
       <div class="hint">※診断結果をLINEでお送りする際、お間違いなくお届けするために使用します。<br>
-      LINEのお名前と違っていると届かないこともありますので、LINEでお使いのお名前をご入力ください。</div>
+      LINEのお名前と違っていると届かないこともあります。</div>
     </div>
 
     <div class="card">
@@ -303,6 +308,7 @@ var PHOTOS = [
 function collectAndValidate() {
   var fields = [
     { id: 'f_name', label: 'お名前' },
+    { id: 'f_line', label: 'LINEのお名前' },
     { id: 'f_email', label: 'メールアドレス' }
   ].concat(PHOTOS.map(function (p) { return { id: p.id, label: p.label, file: true }; }));
 
@@ -325,6 +331,7 @@ function collectAndValidate() {
   }
   return {
     name: $('f_name').value.trim(),
+    lineName: $('f_line').value.trim(),
     email: email
   };
 }
@@ -353,7 +360,7 @@ $('submitBtn').addEventListener('click', async function () {
     await api({
       action: 'finalize',
       folderId: folderId,
-      answers: { name: d.name, email: d.email }
+      answers: { name: d.name, lineName: d.lineName, email: d.email }
     });
 
     $('mainForm').style.display = 'none';
