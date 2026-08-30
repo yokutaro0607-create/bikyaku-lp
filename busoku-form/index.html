@@ -222,16 +222,42 @@ function setStatus(msg, isError) {
   el.className = isError ? 'error' : '';
 }
 
+// 送信の途中経過をこの端末に控える（やり直しても最初からにならないようにする）
+//   なぜ要るか（2026-08-30）: GASへの問い合わせは script.google.com で処理を終えてから
+//   googleusercontent.com へ寄り道して返事を受け取る2段構え。携帯回線などで2段目だけ
+//   取りこぼすと、サーバー側は成功しているのに画面には「通信エラー」と出て止まる。
+//   実際に「フォルダだけできて中身が空」「写真1枚だけで止まる」提出が何件も残り、
+//   3〜5回やり直した方がいた。控えを持つことで、やり直しは続きから再開になる。
+var RESUME_TTL = 6 * 60 * 60 * 1000;   // 6時間で控えを捨てる
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function resumeKey(name, email) { return 'resume:' + CONFIG.FORM_KEY + ':' + name + '|' + email; }
+function loadResume(key) {
+  try {
+    var s = JSON.parse(localStorage.getItem(key) || 'null');
+    if (s && s.at && Date.now() - s.at < RESUME_TTL) { s.key = key; return s; }
+  } catch (e) {}
+  return null;
+}
+function saveResume(s) {
+  try { s.at = Date.now(); localStorage.setItem(s.key, JSON.stringify(s)); } catch (e) {}
+}
+function clearResume(key) { try { localStorage.removeItem(key); } catch (e) {} }
+
 // GASのAPI呼び出し（text/plainで送るとプリフライト無しで届く）
-function api(payload) {
+// 返事を1回取りこぼしただけで提出全体が失敗しないよう、間を空けて3回まで試す。
+async function api(payload) {
   payload.key = CONFIG.FORM_KEY;
-  return fetch(CONFIG.GAS_URL, {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  }).then(function (r) { return r.json(); }).then(function (j) {
-    if (!j.ok) throw new Error(j.error || 'サーバーエラー');
-    return j;
-  });
+  var last;
+  for (var i = 0; i < 3; i++) {
+    if (i) await sleep(1500 * i);
+    try {
+      var r = await fetch(CONFIG.GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
+      var j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'サーバーエラー');
+      return j;
+    } catch (e) { last = e; }
+  }
+  throw last;
 }
 
 // 1チャンクをアップロード（308=続きあり、200/201=完了）
@@ -253,16 +279,24 @@ function putChunk(uploadUrl, blob, start, total, onProgress) {
   });
 }
 
-// ファイル全体を分割アップロード（チャンクごとに3回まで再試行）
-async function uploadFile(folderId, file, saveName, barId, labelId) {
-  var res = await api({
-    action: 'initUpload',
-    folderId: folderId,
-    fileName: saveName,
-    mimeType: file.type || 'application/octet-stream'
+// Driveに「いまどこまで届いたか」を聞く。-1 が返ったら、そのファイルは完了している。
+function askOffset(uploadUrl, total) {
+  return new Promise(function (resolve) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl, true);
+    xhr.setRequestHeader('Content-Range', 'bytes */' + total);
+    xhr.onload = function () {
+      if (xhr.status === 200 || xhr.status === 201) return resolve(-1);
+      var m = xhr.status === 308 && /bytes=0-(\d+)/.exec(xhr.getResponseHeader('Range') || '');
+      resolve(m ? Number(m[1]) + 1 : 0);
+    };
+    xhr.onerror = function () { resolve(0); };
+    xhr.send();
   });
-  var url = res.uploadUrl;
+}
 
+// ファイル1つを分割アップロード。途中で切れても、次は続きから送る。
+async function uploadFile(state, slot, file, saveName, barId, labelId) {
   var bar = $(barId); bar.style.display = 'block';
   var inner = bar.querySelector('.progress-inner');
   var label = $(labelId);
@@ -272,25 +306,52 @@ async function uploadFile(folderId, file, saveName, barId, labelId) {
     inner.style.width = pct + '%';
     label.textContent = 'アップロード中… ' + pct + '%';
   }
+  function finish(msg) { inner.style.width = '100%'; label.textContent = msg; }
 
-  var pos = 0;
+  var slots = state.slots || (state.slots = {});
+  var s = slots[slot];
+  if (!s || s.size !== file.size) s = slots[slot] = { size: file.size, url: null, done: false };
+  if (s.done) { finish('送信済み ✓'); return; }
+
+  var fresh = false;
+  if (!s.url) {
+    s.url = (await api({
+      action: 'initUpload',
+      folderId: state.folderId,
+      fileName: saveName,
+      mimeType: file.type || 'application/octet-stream'
+    })).uploadUrl;
+    fresh = true;
+    saveResume(state);
+  }
+
+  var pos = fresh ? 0 : await askOffset(s.url, file.size);
+  if (pos < 0) { s.done = true; saveResume(state); finish('アップロード完了 ✓'); return; }
+
   while (pos < file.size) {
-    var blob = file.slice(pos, Math.min(pos + CHUNK, file.size));
-    var tries = 0;
-    for (;;) {
+    var end = Math.min(pos + CHUNK, file.size);
+    var blob = file.slice(pos, end);
+    var tries = 0, sent = false;
+    while (!sent) {
       try {
-        await putChunk(url, blob, pos, file.size, show);
-        break;
+        await putChunk(s.url, blob, pos, file.size, show);
+        pos = end; sent = true;
       } catch (e) {
         tries++;
         if (tries >= 3) throw e;
-        await new Promise(function (r) { setTimeout(r, 2000 * tries); });
+        await sleep(2000 * tries);
+        var got = await askOffset(s.url, file.size);   // 届いていた分は送り直さない
+        if (got < 0) { pos = file.size; sent = true; }
+        else if (got > pos) { pos = got; sent = true; }
       }
     }
-    pos += blob.size;
   }
-  inner.style.width = '100%';
-  label.textContent = 'アップロード完了 ✓';
+  // 送ったつもりで欠けるのを防ぐため、Drive側でも完了しているか最後に確かめる
+  if ((await askOffset(s.url, file.size)) !== -1) {
+    throw new Error(saveName + ' が最後まで届きませんでした');
+  }
+  s.done = true; saveResume(state);
+  finish('アップロード完了 ✓');
 }
 
 function ext(file, fallback) {
@@ -348,23 +409,32 @@ $('submitBtn').addEventListener('click', async function () {
   setStatus('送信を開始しています…\n※完了するまでこの画面を閉じないでください');
 
   try {
-    var s = await api({ action: 'start', name: d.name, email: d.email });
-    var folderId = s.folderId;
+    // 途中で切れて送り直したときは、前回のフォルダと続きを引き継ぐ
+    var key = resumeKey(d.name, d.email);
+    var state = loadResume(key);
+    if (state && state.folderId) {
+      setStatus('前回の続きから送ります…\n※完了するまでこの画面を閉じないでください');
+    } else {
+      state = { key: key, slots: {} };
+      state.folderId = (await api({ action: 'start', name: d.name, email: d.email })).folderId;
+      saveResume(state);
+    }
 
     for (var i = 0; i < PHOTOS.length; i++) {
       var p = PHOTOS[i];
       var file = $(p.id).files[0];
       setStatus(p.label + 'をアップロード中…（' + (i + 1) + '/6）\n※完了するまでこの画面を閉じないでください');
-      await uploadFile(folderId, file, p.save + '.' + ext(file, 'jpg'),
+      await uploadFile(state, p.save, file, p.save + '.' + ext(file, 'jpg'),
         'p_' + p.id.slice(2), 'pl_' + p.id.slice(2));
     }
 
     setStatus('回答を保存しています…');
     await api({
       action: 'finalize',
-      folderId: folderId,
+      folderId: state.folderId,
       answers: { name: d.name, lineName: d.lineName, email: d.email }
     });
+    clearResume(key);
 
     $('mainForm').style.display = 'none';
     $('doneCard').style.display = 'block';
